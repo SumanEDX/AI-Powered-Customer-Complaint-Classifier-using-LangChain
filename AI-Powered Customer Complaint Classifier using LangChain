@@ -1,0 +1,66 @@
+import streamlit as st
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+from langchain_core.messages import HumanMessage
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize LLaMA model from Hugging Face
+llm = HuggingFaceEndpoint(
+    repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
+    task="text-generation",
+    max_new_tokens=10,     # Only need category name
+    temperature=0.1        # Low temperature for stable output
+)
+
+# Wrap in ChatHuggingFace for chat-style interaction
+chat_model = ChatHuggingFace(llm=llm)
+
+# Streamlit UI
+st.set_page_config(
+    page_title="Customer Complaint Categorizer",
+    layout="centered"
+)
+
+st.title("📩 GenAI Customer Complaint Categorizer (LLaMA)")
+st.write(
+    "Enter a customer complaint below. "
+    "The system will automatically classify it using a LLaMA-based GenAI model."
+)
+
+complaint = st.text_area("Customer Complaint")
+
+if st.button("Categorize Complaint"):
+    if complaint.strip() == "":
+        st.warning("Please enter a complaint.")
+    else:
+        prompt = f"""
+You are a customer support assistant.
+
+Classify the following complaint into ONLY one of these categories:
+- Billing
+- Delivery
+- Product
+- Service
+- Refund
+
+Complaint:
+{complaint}
+
+Respond with only the category name.
+"""
+
+        with st.spinner("Analyzing complaint..."):
+            try:
+                response = chat_model.invoke(
+                    [HumanMessage(content=prompt)]
+                )
+
+                category = response.content.strip().split()[0]
+
+                st.success("Complaint Category:")
+                st.subheader(category)
+
+            except Exception as e:
+                st.error(f"Error occurred: {e}")
